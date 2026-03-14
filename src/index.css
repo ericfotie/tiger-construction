@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* --- 1. TES VARIABLES DE MARQUE --- */
+:root {
+  --accent: #f59e0b;       /* Jaune Ambre Tiger */
+  --accent-bg: #fffbeb;    /* Fond léger pour boutons */
+  --accent-border: #d97706;
+  --border: #e2e8f0;
+  --text-h: #0f172a;       /* Noir ardoise pour titres */
+  --social-bg: #f8fafc;
+  --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* --- 2. ADAPTATION DE LA CLASSE .COUNTER --- */
+.counter {
+  /* Correction : Utilisation du CSS standard au lieu des classes Tailwind */
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+
+  padding: 6px 14px;
+  border-radius: 99px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  transition: all 0.3s ease;
+  display: inline-block;
+
+  &:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+  }
+}
+
+/* --- 3. STRUCTURE DE LA PAGE --- */
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+  padding: 80px 20px;
+
+  @media (max-width: 1024px) {
+    padding: 40px 20px;
+    gap: 24px;
+  }
+}
+
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: white;
+  text-align: left;
+
+  & > div {
+    flex: 1 1 0;
+    padding: 48px;
+    @media (max-width: 1024px) {
+      padding: 32px 20px;
+    }
+  }
+
+  .icon {
+    margin-bottom: 20px;
+    width: 32px;
+    height: 32px;
+    color: var(--accent);
+  }
+
+  h2 {
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+    color: var(--text-h);
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 1px solid var(--border);
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* --- 4. NAVIGATION & LIENS SOCIAUX --- */
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 12px;
+  margin: 24px 0 0;
+
+  a {
+    color: var(--text-h);
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 12px;
+    background: var(--social-bg);
+    display: flex;
+    padding: 10px 20px;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+
+    &:hover {
+      box-shadow: var(--shadow);
+      background: white;
+      border-color: var(--accent);
+      transform: translateY(-3px);
+    }
+  }
+
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+    justify-content: center;
+    li { flex: 1 1 calc(50% - 12px); }
+  }
+}
+
+/* --- 5. ANIMATIONS DE RÉVÉLATION --- */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- 6. EFFET DE LIGNE (TICKS) --- */
+.ticks {
+  position: relative;
+  width: 100%;
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    width: 40px;
+    height: 2px;
+    background: var(--accent);
+  }
+  &::before { left: 0; }
+  &::after { right: 0; }
+}

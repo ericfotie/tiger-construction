@@ -1,0 +1,68 @@
+import React, { useState } from 'react';
+
+export default function LoginView({ onLogin, onBack }) {
+    const [creds, setCreds] = useState({ user: '', pass: '' });
+    const [error, setError] = useState(false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (creds.user === 'admin' && creds.pass === '123') {
+            onLogin();
+        } else {
+            setError(true);
+            setTimeout(() => setError(false), 2000);
+        }
+    };
+
+    return (
+        <div className="h-screen w-full bg-slate-900 flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl relative overflow-hidden">
+                {/* Ligne décorative Tiger */}
+                <div className="absolute top-0 left-0 w-full h-2 bg-amber-500"></div>
+
+                {/* En-tête */}
+                <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 text-slate-900">
+                    Accès <span className="text-amber-500">Sécurisé</span>
+                </h2>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">
+                    Direction Technique Tiger
+                </p>
+
+                {/* Formulaire de connexion */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input
+                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                        placeholder="Identifiant"
+                        onChange={e => setCreds({...creds, user: e.target.value})}
+                    />
+                    <input
+                        type="password"
+                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                        placeholder="Mot de passe"
+                        onChange={e => setCreds({...creds, pass: e.target.value})}
+                    />
+
+                    {error && (
+                        <p className="text-red-500 text-[10px] font-black uppercase text-center animate-bounce">
+                            Identifiants incorrects
+                        </p>
+                    )}
+
+                    <button className="w-full py-6 bg-slate-900 text-amber-500 font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-slate-800 transition-all shadow-xl">
+                        Connexion
+                    </button>
+                </form>
+
+                {/* --- LE BOUTON RETOUR EST MAINTENANT ICI (EN BAS) --- */}
+                <div className="mt-10 pt-6 border-t border-slate-50 flex justify-center">
+                    <button
+                        onClick={onBack}
+                        className="text-slate-400 hover:text-slate-900 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all group"
+                    >
+                        <span className="group-hover:-translate-x-1 transition-transform">←</span> Retour au site
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
