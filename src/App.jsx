@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjetService, ContactService, UserService, AuthService } from './api/services';
 import VisitorView from './components/VisitorView';
 import AdminView from './components/AdminView';
 
-// --- COMPOSANT LOGIN MIS À JOUR ---
-function LoginView({ onLogin, onBack }) {
+// --- COMPOSANT LOGIN (Optimisé avec ton style Tiger) ---
+function LoginView({ onLogin }) {
     const [creds, setCreds] = useState({ user: '', pass: '' });
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -12,8 +13,6 @@ function LoginView({ onLogin, onBack }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-
-        // Appel au service d'authentification qui vérifie la Database
         const result = await AuthService.login(creds.user, creds.pass);
 
         if (result.success) {
@@ -26,39 +25,56 @@ function LoginView({ onLogin, onBack }) {
     };
 
     return (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-amber-500"></div>
-                <button onClick={onBack} className="text-slate-400 hover:text-slate-900 mb-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all">
-                    ← Retour au site
-                </button>
-                <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">Accès <span className="text-amber-500">Sécurisé</span></h2>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Direction Technique Tiger</p>
+        <div className="h-screen w-full bg-tiger-dark flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-md rounded-[40px] p-10 md:p-12 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-2 bg-tiger-gold"></div>
+
+                <div className="text-center mb-10">
+                    <div className="w-16 h-16 bg-tiger-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-tiger-gold/20">
+                        <span className="text-white text-3xl font-black">T</span>
+                    </div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-tiger-dark">Direction <span className="text-tiger-gold">Tiger</span></h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-2">Accès Sécurisé Bureau</p>
+                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <input
-                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                        placeholder="Identifiant"
-                        value={creds.user}
-                        onChange={e => setCreds({...creds, user: e.target.value})}
-                    />
-                    <input
-                        type="password"
-                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                        placeholder="Mot de passe"
-                        value={creds.pass}
-                        onChange={e => setCreds({...creds, pass: e.target.value})}
-                    />
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Identifiant</label>
+                        <input
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
+                            placeholder="Utilisateur"
+                            value={creds.user}
+                            onChange={e => setCreds({...creds, user: e.target.value})}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Mot de passe</label>
+                        <input
+                            type="password"
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
+                            placeholder="••••••••"
+                            value={creds.pass}
+                            onChange={e => setCreds({...creds, pass: e.target.value})}
+                        />
+                    </div>
 
-                    {error && <p className="text-red-500 text-[10px] font-black uppercase text-center animate-bounce">Identifiants incorrects</p>}
+                    {error && (
+                        <p className="text-red-500 text-[10px] font-black uppercase text-center animate-pulse py-2">
+                            Identifiants invalides
+                        </p>
+                    )}
 
                     <button
                         disabled={loading}
-                        className="w-full py-6 bg-slate-900 text-amber-500 font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-slate-800 transition-all shadow-xl disabled:opacity-50"
+                        className="w-full py-5 bg-tiger-dark text-tiger-gold font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-black transition-all shadow-xl disabled:opacity-50"
                     >
-                        {loading ? "Vérification..." : "Connexion"}
+                        {loading ? "Vérification..." : "Entrer dans le Bureau"}
                     </button>
                 </form>
+
+                <a href="/" className="block text-center mt-8 text-[9px] font-black text-slate-400 uppercase hover:text-tiger-dark transition-colors">
+                    ← Retour au site public
+                </a>
             </div>
         </div>
     );
@@ -67,21 +83,20 @@ function LoginView({ onLogin, onBack }) {
 // --- COMPOSANT PRINCIPAL APP ---
 export default function App() {
     const [isAdmin, setIsAdmin] = useState(false);
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [data, setData] = useState({ projets: [], messages: [], users: [] });
     const [loading, setLoading] = useState(true);
 
-    // Charger les données ET vérifier la session au démarrage
+    useEffect(() => {
+        initApp();
+    }, []);
+
     const initApp = async () => {
         setLoading(true);
-
-        // 1. Vérifier si une session existe déjà
+        // Vérifier la session
         const session = AuthService.checkSession();
         if (session && session.loggedIn) {
             setIsAdmin(true);
         }
-
-        // 2. Charger les données (projets, etc.)
         await loadAllData();
         setLoading(false);
     };
@@ -95,29 +110,30 @@ export default function App() {
             ]);
 
             let p = respP?.data || [];
+            // Auto-seed si vide
             if (p.length === 0) {
                 await seedInitialData();
                 const retryP = await ProjetService.getAll();
                 p = retryP?.data || [];
             }
 
-            setData({ projets: p, messages: respM?.data || [], users: respU?.data || [] });
+            setData({
+                projets: p,
+                messages: respM?.data || [],
+                users: respU?.data || []
+            });
         } catch (err) {
-            console.error("❌ Erreur :", err);
+            console.error("❌ Erreur de chargement :", err);
         }
     };
 
     const seedInitialData = async () => {
         const demo = [
-            { titre: "Extension Portuaire Douala", localisation: "Littoral", typeTravaux: "Génie Maritime", description: "Aménagement des quais.", dateFin: "2026-12", photoUrl: "https://images.unsplash.com/photo-1590644365607-1c5a519a7a37?q=80&w=2070" },
-            { titre: "Pont sur la Sanaga", localisation: "Nachtigal", typeTravaux: "Ouvrage d'art", description: "Pont mixte acier-béton.", dateFin: "2025-08", photoUrl: "https://images.unsplash.com/photo-1545139224-79b1219a7ec6?q=80&w=2070" }
+            { titre: "Extension Portuaire Douala", localisation: "Littoral", typeTravaux: "Génie Maritime", description: "Aménagement des quais.", evolution: 65, duree: "24 mois", photoUrl: "https://images.unsplash.com/photo-1590644365607-1c5a519a7a37?q=80&w=2070" },
+            { titre: "Pont sur la Sanaga", localisation: "Nachtigal", typeTravaux: "Ouvrage d'art", description: "Pont mixte acier-béton.", evolution: 40, duree: "18 mois", photoUrl: "https://images.unsplash.com/photo-1545139224-79b1219a7ec6?q=80&w=2070" }
         ];
         for (const proj of demo) { await ProjetService.create(proj); }
     };
-
-    useEffect(() => {
-        initApp();
-    }, []);
 
     const handleLogout = () => {
         AuthService.logout();
@@ -125,38 +141,47 @@ export default function App() {
     };
 
     if (loading) return (
-        <div className="h-screen w-full flex items-center justify-center bg-[#0f172a]">
+        <div className="h-screen w-full flex items-center justify-center bg-tiger-dark">
             <div className="text-center">
-                <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <div className="w-12 h-12 border-4 border-tiger-gold border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                 <h2 className="text-white font-black uppercase tracking-[0.3em] text-[10px]">Tiger Construction</h2>
             </div>
         </div>
     );
 
-    if (isAdmin) {
-        return (
-            <AdminView
-                projets={data.projets}
-                messages={data.messages}
-                onLogout={handleLogout} // Utilise la nouvelle fonction de déconnexion
-                refresh={loadAllData}
-            />
-        );
-    }
-
-    if (isLoggingIn) {
-        return (
-            <LoginView
-                onLogin={() => { setIsAdmin(true); setIsLoggingIn(false); }}
-                onBack={() => setIsLoggingIn(false)}
-            />
-        );
-    }
-
     return (
-        <VisitorView
-            projets={data.projets}
-            onAdminAccess={() => setIsLoggingIn(true)}
-        />
+        <Router>
+            <Routes>
+                {/* ROUTE CLIENT (Par défaut) */}
+                <Route path="/" element={
+                    <VisitorView
+                        projets={data.projets}
+                        onAdminAccess={() => {}} // Optionnel si tu as enlevé le bouton du haut
+                    />
+                } />
+
+                {/* DEUXIÈME LIEN : Ton accès secret /direction */}
+                <Route path="/direction" element={
+                    isAdmin ? <Navigate to="/admin" /> : <LoginView onLogin={() => setIsAdmin(true)} />
+                } />
+
+                {/* ROUTE ADMIN (Protégée par le state isAdmin) */}
+                <Route path="/admin" element={
+                    isAdmin ? (
+                        <AdminView
+                            projets={data.projets}
+                            messages={data.messages}
+                            onLogout={handleLogout}
+                            refresh={loadAllData}
+                        />
+                    ) : (
+                        <Navigate to="/direction" />
+                    )
+                } />
+
+                {/* Redirection automatique si lien inconnu */}
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </Router>
     );
 }

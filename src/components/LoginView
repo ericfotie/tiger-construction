@@ -6,6 +6,7 @@ export default function LoginView({ onLogin, onBack }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        // Vérification des identifiants (à remplacer par ton AuthService plus tard)
         if (creds.user === 'admin' && creds.pass === '123') {
             onLogin();
         } else {
@@ -15,51 +16,68 @@ export default function LoginView({ onLogin, onBack }) {
     };
 
     return (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl relative overflow-hidden">
-                {/* Ligne décorative Tiger */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-amber-500"></div>
+        <div className="h-screen w-full bg-tiger-dark flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-[40px] p-10 md:p-12 shadow-2xl relative overflow-hidden">
+                {/* Ligne décorative Tiger Gold */}
+                <div className="absolute top-0 left-0 w-full h-2 bg-tiger-gold"></div>
 
-                {/* En-tête */}
-                <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 text-slate-900">
-                    Accès <span className="text-amber-500">Sécurisé</span>
-                </h2>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">
-                    Direction Technique Tiger
-                </p>
+                {/* Logo & En-tête */}
+                <div className="text-center mb-10">
+                    <div className="w-16 h-16 bg-tiger-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-tiger-gold/20">
+                        <span className="text-white text-3xl font-black">T</span>
+                    </div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-tiger-dark">
+                        Espace <span className="text-tiger-gold">Direction</span>
+                    </h2>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2">
+                        Tiger Construction BTP
+                    </p>
+                </div>
 
                 {/* Formulaire de connexion */}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <input
-                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                        placeholder="Identifiant"
-                        onChange={e => setCreds({...creds, user: e.target.value})}
-                    />
-                    <input
-                        type="password"
-                        className="w-full p-5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                        placeholder="Mot de passe"
-                        onChange={e => setCreds({...creds, pass: e.target.value})}
-                    />
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 ml-3">Identifiant</label>
+                        <input
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
+                            placeholder="admin"
+                            value={creds.user}
+                            onChange={e => setCreds({...creds, user: e.target.value})}
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 ml-3">Mot de passe</label>
+                        <input
+                            type="password"
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
+                            placeholder="••••••••"
+                            value={creds.pass}
+                            onChange={e => setCreds({...creds, pass: e.target.value})}
+                        />
+                    </div>
 
                     {error && (
-                        <p className="text-red-500 text-[10px] font-black uppercase text-center animate-bounce">
-                            Identifiants incorrects
-                        </p>
+                        <div className="bg-red-50 py-2 rounded-xl">
+                            <p className="text-red-500 text-[10px] font-black uppercase text-center animate-pulse">
+                                Accès refusé : Identifiants incorrects
+                            </p>
+                        </div>
                     )}
 
-                    <button className="w-full py-6 bg-slate-900 text-amber-500 font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-slate-800 transition-all shadow-xl">
-                        Connexion
+                    <button className="w-full py-5 bg-tiger-dark text-tiger-gold font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-black transition-all shadow-xl shadow-tiger-gold/10">
+                        Ouvrir le Bureau
                     </button>
                 </form>
 
-                {/* --- LE BOUTON RETOUR EST MAINTENANT ICI (EN BAS) --- */}
+                {/* Bouton Retour (Bas de page) */}
                 <div className="mt-10 pt-6 border-t border-slate-50 flex justify-center">
                     <button
                         onClick={onBack}
-                        className="text-slate-400 hover:text-slate-900 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all group"
+                        className="text-slate-400 hover:text-tiger-dark flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all group"
                     >
-                        <span className="group-hover:-translate-x-1 transition-transform">←</span> Retour au site
+                        <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                        Retour au site public
                     </button>
                 </div>
             </div>

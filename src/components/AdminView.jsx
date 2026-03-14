@@ -6,13 +6,17 @@ export default function AdminView({ onLogout }) {
     const [data, setData] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // NOUVEAU : État pour ouvrir la sidebar sur mobile
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const [selectedMessage, setSelectedMessage] = useState(null);
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // --- NOUVEAUX ÉTATS POUR LES FILTRES ---
+    const [filterCity, setFilterCity] = useState('Tous');
+    const [filterStatus, setFilterStatus] = useState('Tous');
+
     const [newProjet, setNewProjet] = useState({
         titre: '', description: '', localisation: '',
         duree: '', evolution: 0, photos: []
@@ -20,18 +24,39 @@ export default function AdminView({ onLogout }) {
 
     const refreshData = async () => {
         try {
-            const res = tab === 'projets'
-                ? await ProjetService.getAll()
-                : await ContactService.getAll();
-            const finalData = res.data || res;
-            setData(Array.isArray(finalData) ? finalData : []);
+            const resMessages = await ContactService.getAll();
+            const allMessages = Array.isArray(resMessages.data) ? resMessages.data : (Array.isArray(resMessages) ? resMessages : []);
+            const unread = allMessages.filter(m => !m.traite).length;
+            setUnreadCount(unread);
+
+            if (tab === 'projets') {
+                const res = await ProjetService.getAll();
+                setData(Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []));
+            } else {
+                setData(allMessages);
+            }
         } catch (err) {
             console.error("Erreur de synchronisation :", err);
             setData([]);
         }
     };
 
-    useEffect(() => { refreshData(); setIsMobileMenuOpen(false); }, [tab]);
+    useEffect(() => {
+        refreshData();
+        setIsMobileMenuOpen(false);
+    }, [tab]);
+
+    // --- LOGIQUE DE FILTRAGE ---
+    const villesUniques = ['Tous', ...new Set(data.map(item => item.localisation).filter(Boolean))];
+
+    const donnéesFiltrées = data.filter(item => {
+        if (tab !== 'projets') return true; // Pas de filtre complexe pour les messages pour l'instant
+        const matchVille = filterCity === 'Tous' || item.localisation === filterCity;
+        const matchStatut = filterStatus === 'Tous'
+            ? true
+            : filterStatus === 'Terminé' ? parseInt(item.evolution) === 100 : parseInt(item.evolution) < 100;
+        return matchVille && matchStatut;
+    });
 
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
@@ -56,22 +81,17 @@ export default function AdminView({ onLogout }) {
         });
     };
 
-    const handleEdit = (projet) => {
-        setEditingId(projet.id);
+    const handleEdit = (item) => {
+        setEditingId(item.id);
         setNewProjet({
-            titre: projet.titre,
-            description: projet.description,
-            localisation: projet.localisation,
-            duree: projet.duree,
-            evolution: projet.evolution,
-            photos: projet.photos || (projet.photoUrl ? [projet.photoUrl] : [])
+            titre: item.titre,
+            description: item.description,
+            localisation: item.localisation,
+            duree: item.duree,
+            evolution: item.evolution,
+            photos: item.photos || (item.photoUrl ? [item.photoUrl] : [])
         });
         setIsModalOpen(true);
-    };
-
-    const handleViewMessage = (message) => {
-        setSelectedMessage(message);
-        setIsMessageModalOpen(true);
     };
 
     const handleSubmit = async (e) => {
@@ -106,7 +126,7 @@ export default function AdminView({ onLogout }) {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Confirmer la suppression ?")) {
+        if (window.confirm("Confirmer la suppression ? Cette action est irréversible.")) {
             try {
                 tab === 'projets' ? await ProjetService.delete(id) : await ContactService.delete(id);
                 refreshData();
@@ -117,157 +137,194 @@ export default function AdminView({ onLogout }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-x-hidden">
 
-            {/* BOUTON MENU BURGER (Mobile uniquement) */}
+            {/* BOUTON MENU BURGER (Mobile) */}
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden fixed top-6 right-6 z-50 bg-amber-500 text-slate-900 p-4 rounded-2xl shadow-xl font-black"
+                className="lg:hidden fixed bottom-6 right-6 z-50 bg-amber-500 text-slate-900 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl"
             >
                 {isMobileMenuOpen ? '✕' : '☰'}
             </button>
 
-            {/* SIDEBAR : Responsive (Cachée sur mobile, fixe sur desktop) */}
+            {/* SIDEBAR */}
             <aside className={`
-                fixed inset-y-0 left-0 z-40 w-80 bg-[#0f172a] text-white p-8 flex flex-col shadow-2xl transition-transform duration-300
+                fixed inset-y-0 left-0 z-40 w-72 bg-[#0f172a] text-white p-6 flex flex-col shadow-2xl transition-transform duration-300
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
                 lg:translate-x-0 lg:static lg:h-screen
             `}>
-                <div className="mb-12">
-                    <h2 className="font-black text-2xl uppercase tracking-tighter">Tiger<span className="text-amber-500">.</span>Admin</h2>
+                <div className="mb-10 px-2">
+                    <h2 className="font-black text-xl uppercase tracking-tighter">Tiger<span className="text-amber-500">.</span>Admin</h2>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.4em]">Panel de Direction</p>
                 </div>
+
                 <nav className="space-y-2 flex-1">
-                    <button onClick={() => setTab('projets')} className={`w-full text-left p-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${tab === 'projets' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
-                        <span>🏗️ Gestion Chantiers</span>
+                    <button onClick={() => setTab('projets')} className={`w-full flex items-center justify-between p-4 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${tab === 'projets' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
+                        <span>🏗️ Projets</span>
                     </button>
-                    <button onClick={() => setTab('messages')} className={`w-full text-left p-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${tab === 'messages' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
-                        <span>📩 Messages Reçus</span>
+
+                    <button onClick={() => setTab('messages')} className={`w-full flex items-center justify-between p-4 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${tab === 'messages' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
+                        <span>📩 Messages</span>
+                        {unreadCount > 0 && (
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] ${tab === 'messages' ? 'bg-slate-900 text-white' : 'bg-amber-500 text-slate-900 animate-bounce'}`}>
+                                {unreadCount}
+                            </span>
+                        )}
                     </button>
                 </nav>
-                <button onClick={onLogout} className="mt-auto p-5 border border-white/10 rounded-2xl text-[10px] font-black uppercase hover:bg-red-500 transition-all text-slate-400 hover:text-white">
+
+                <button onClick={onLogout} className="mt-auto p-4 border border-white/10 rounded-xl text-[9px] font-black uppercase hover:bg-red-500/10 hover:text-red-500 transition-all text-slate-500">
                     Déconnexion
                 </button>
             </aside>
 
-            {/* ZONE PRINCIPALE : Adaptable */}
-            <main className="flex-1 p-6 lg:p-12 w-full">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+            {/* ZONE PRINCIPALE */}
+            <main className="flex-1 p-4 lg:p-10 w-full max-w-7xl mx-auto">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
-                        <h1 className="text-3xl lg:text-5xl font-black uppercase tracking-tighter">
-                            {tab === 'projets' ? 'Infrastructures' : 'Communications'}
+                        <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tighter">
+                            {tab === 'projets' ? 'Infrastructures' : 'Boîte de réception'}
                         </h1>
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-3">
-                            {data.length} enregistrements
-                        </p>
                     </div>
                     {tab === 'projets' && (
-                        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-slate-900 text-amber-500 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">
-                            + Nouveau Dossier
+                        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-slate-900 text-amber-500 px-6 py-3.5 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all shadow-lg shadow-amber-500/10">
+                            + Ajouter un projet
                         </button>
                     )}
                 </header>
 
-                {/* LISTE DES ELEMENTS : Améliorée pour mobile */}
-                <div className="grid grid-cols-1 gap-4">
-                    {data.map((item) => (
-                        <div key={item.id} className="bg-white p-6 lg:p-8 rounded-[30px] lg:rounded-[40px] shadow-sm border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 group">
-                            <div className="flex items-center gap-6">
-                                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50 flex-shrink-0">
+                {/* --- BARRE DE FILTRES (Affichée uniquement pour l'onglet Projets) --- */}
+                {tab === 'projets' && data.length > 0 && (
+                    <div className="flex flex-wrap gap-4 mb-8 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex-1 min-w-[150px]">
+                            <label className="text-[8px] font-black uppercase text-slate-400 ml-2">📍 Localisation</label>
+                            <select
+                                value={filterCity}
+                                onChange={(e) => setFilterCity(e.target.value)}
+                                className="w-full mt-1 p-3 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none focus:ring-2 ring-amber-500"
+                            >
+                                {villesUniques.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex-1 min-w-[150px]">
+                            <label className="text-[8px] font-black uppercase text-slate-400 ml-2">📊 État d'avancement</label>
+                            <select
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                className="w-full mt-1 p-3 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none focus:ring-2 ring-amber-500"
+                            >
+                                <option value="Tous">Tous les chantiers</option>
+                                <option value="En cours">En cours de réalisation</option>
+                                <option value="Terminé">Chantiers achevés</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-3">
+                    {donnéesFiltrées.length > 0 ? donnéesFiltrées.map((item) => (
+                        <div key={item.id} className="bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100">
                                     {tab === 'projets' ?
-                                        <img src={item.photoUrl || 'https://placehold.co/200'} alt="" className="w-full h-full object-cover" /> :
-                                        <span className="text-2xl">📩</span>
+                                        <img src={item.photoUrl || 'https://placehold.co/200'} className="w-full h-full object-cover" alt="" /> :
+                                        <div className="w-full h-full flex items-center justify-center text-xl bg-amber-50">✉️</div>
                                     }
                                 </div>
-                                <div>
-                                    <h3 className="font-black uppercase text-sm lg:text-base text-slate-900 leading-tight">{item.titre || item.sujet || "Sans Titre"}</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-                                        {tab === 'projets' ? `📍 ${item.localisation}` : `👤 ${item.nomExpediteur || 'Inconnu'}`}
+                                <div className="truncate">
+                                    <h3 className="font-black uppercase text-xs lg:text-sm text-slate-900 truncate">{item.titre || item.sujet || "Sans objet"}</h3>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5 truncate">
+                                        {tab === 'projets' ? `📍 ${item.localisation}` : `👤 ${item.nomExpediteur || 'Client'}`}
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between w-full sm:w-auto gap-4 lg:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
+
+                            <div className="flex items-center gap-2">
                                 {tab === 'projets' ? (
                                     <>
-                                        <div className="text-right hidden xs:block">
-                                            <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                                <div className="bg-amber-500 h-full" style={{ width: `${item.evolution}%` }}></div>
-                                            </div>
-                                            <p className="text-[10px] font-black mt-1">{item.evolution}%</p>
+                                        <div className="hidden sm:block text-right mr-4">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase">Evo</p>
+                                            <p className="text-[10px] font-black text-amber-500">{item.evolution}%</p>
                                         </div>
-                                        <button onClick={() => handleEdit(item)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-amber-50 text-amber-600 rounded-xl">✏️</button>
+                                        <button onClick={() => handleEdit(item)} className="p-2.5 bg-slate-50 text-slate-400 hover:bg-amber-100 hover:text-amber-600 rounded-lg transition-colors">✏️</button>
                                     </>
                                 ) : (
-                                    <button onClick={() => handleViewMessage(item)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl">👁️</button>
+                                    <button onClick={() => { setSelectedMessage(item); setIsMessageModalOpen(true); }} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg">👁️</button>
                                 )}
-                                <button onClick={() => handleDelete(item.id)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-red-50 text-red-500 rounded-xl">🗑️</button>
+                                <button onClick={() => handleDelete(item.id)} className="p-2.5 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all">🗑️</button>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                        <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Aucun dossier correspondant</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* MODAL PROJET : Corrigée pour mobile */}
+                {/* MODAL PROJET (Inchangée mais toujours nécessaire) */}
                 {isModalOpen && (
-                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4 text-slate-900">
-                        <div className="bg-white w-full max-w-5xl max-h-[95vh] overflow-y-auto rounded-[35px] p-8 lg:p-16 relative">
-                            <h2 className="text-2xl lg:text-4xl font-black uppercase tracking-tighter mb-8">
-                                {editingId ? 'Modifier Dossier' : 'Création Dossier'}
-                            </h2>
-                            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
-                                <div className="space-y-4">
-                                    <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm focus:ring-2 ring-amber-500" placeholder="Titre du projet" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
-                                    <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm focus:ring-2 ring-amber-500" placeholder="Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm" placeholder="Délai" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
-                                        <input type="number" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm" placeholder="% Evo" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeModal}></div>
+                        <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 lg:p-10 relative z-10 shadow-2xl">
+                            <h2 className="text-xl font-black uppercase mb-6">{editingId ? 'Modifier' : 'Nouveau'} Projet</h2>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input required className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs focus:ring-2 ring-amber-500" placeholder="Nom de l'ouvrage" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
+                                    <input required className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs focus:ring-2 ring-amber-500" placeholder="Ville / Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
+                                    <input className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs" placeholder="Durée (ex: 12 mois)" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
+                                    <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase">Evo: {newProjet.evolution}%</span>
+                                        <input type="range" className="flex-1 accent-amber-500" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
                                     </div>
-                                    <textarea className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm h-32 resize-none" placeholder="Description technique" value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
                                 </div>
-                                <div className="space-y-6">
-                                    <div className="border-4 border-dashed border-slate-100 rounded-3xl p-6 text-center relative bg-slate-50/50">
-                                        <input type="file" multiple accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
-                                        <p className="text-[10px] font-black uppercase text-slate-400 italic">Cliquez pour ajouter des photos</p>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-3">
+                                <textarea className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs h-24 resize-none" placeholder="Description technique..." value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
+
+                                <div className="border-2 border-dashed border-slate-100 rounded-2xl p-6 text-center bg-slate-50/50">
+                                    <input type="file" multiple accept="image/*" className="hidden" id="fileInput" onChange={handleFileChange} />
+                                    <label htmlFor="fileInput" className="cursor-pointer text-[9px] font-black uppercase text-amber-600 hover:text-amber-700 transition-colors">
+                                        + Ajouter des photos techniques
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-2 mt-4">
                                         {newProjet.photos.map((img, idx) => (
-                                            <div key={idx} className="aspect-square rounded-xl overflow-hidden relative group">
+                                            <div key={idx} className="aspect-square rounded-lg overflow-hidden relative group">
                                                 <img src={img} alt="" className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setNewProjet(prev => ({...prev, photos: prev.photos.filter((_, i) => i !== idx)}))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center font-bold text-[8px] uppercase">Supprimer</button>
+                                                <button type="button" onClick={() => setNewProjet(prev => ({...prev, photos: prev.photos.filter((_, i) => i !== idx)}))} className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] font-bold uppercase transition-all">Supprimer</button>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="lg:col-span-2 flex flex-col sm:flex-row gap-4">
-                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-slate-900 text-amber-500 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">
-                                        {isSubmitting ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Valider'}
+
+                                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-50">
+                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-slate-900 text-amber-500 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all shadow-lg">
+                                        {isSubmitting ? 'Enregistrement...' : 'Valider le dossier'}
                                     </button>
-                                    <button type="button" onClick={closeModal} className="py-5 px-10 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase text-xs">Annuler</button>
+                                    <button type="button" onClick={closeModal} className="px-8 py-4 bg-slate-100 text-slate-400 rounded-xl font-black uppercase text-[10px]">Annuler</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 )}
 
-                {/* MODAL MESSAGE : Corrigée pour mobile */}
+                {/* MODAL MESSAGE */}
                 {isMessageModalOpen && selectedMessage && (
-                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4 text-slate-900">
-                        <div className="bg-white w-full max-w-2xl rounded-[35px] p-8 lg:p-12 relative shadow-2xl overflow-y-auto max-h-[90vh]">
-                            <div className="flex justify-between items-start mb-6">
-                                <h2 className="text-2xl font-black uppercase tracking-tighter">{selectedMessage.sujet || "Sans Objet"}</h2>
-                                <button onClick={() => setIsMessageModalOpen(false)} className="text-slate-300 text-2xl font-bold">✕</button>
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMessageModalOpen(false)}></div>
+                        <div className="bg-white w-full max-w-lg rounded-3xl p-6 lg:p-10 relative z-10 shadow-2xl">
+                            <div className="mb-6">
+                                <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Nouveau Message</span>
+                                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 mt-1">{selectedMessage.sujet}</h2>
                             </div>
                             <div className="space-y-4">
-                                <div className="bg-slate-50 p-4 rounded-xl">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Coordonnées</p>
-                                    <p className="font-bold text-sm">{selectedMessage.nomExpediteur} • {selectedMessage.email}</p>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Expéditeur</p>
+                                    <p className="font-bold text-xs text-slate-700">{selectedMessage.nomExpediteur} ({selectedMessage.email})</p>
                                 </div>
-                                <div className="bg-slate-50 p-6 rounded-2xl italic text-sm text-slate-700 leading-relaxed">
-                                    "{selectedMessage.message || selectedMessage.contenu}"
+                                <div className="bg-amber-50/30 p-5 rounded-2xl text-xs text-slate-600 leading-relaxed font-medium">
+                                    {selectedMessage.message || selectedMessage.contenu}
                                 </div>
-                                <div className="flex flex-col gap-3 pt-4">
-                                    {selectedMessage.email && (
-                                        <a href={`mailto:${selectedMessage.email}`} className="bg-amber-500 text-slate-900 text-center py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">✉️ Répondre</a>
-                                    )}
-                                    <button onClick={() => setIsMessageModalOpen(false)} className="bg-slate-100 text-slate-400 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Fermer</button>
+                                <div className="flex flex-col gap-2 pt-4">
+                                    <a href={`mailto:${selectedMessage.email}`} className="bg-slate-900 text-amber-500 text-center py-4 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">✉️ Répondre au client</a>
+                                    <button onClick={() => setIsMessageModalOpen(false)} className="py-4 text-slate-400 font-black uppercase text-[9px]">Fermer</button>
                                 </div>
                             </div>
                         </div>
