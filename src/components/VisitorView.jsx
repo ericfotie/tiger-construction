@@ -84,8 +84,8 @@ export default function VisitorView({ projets, onAdminAccess }) {
                 </div>
             </nav>
 
-            {/* --- 3. HERO SECTION --- */}
-            <header className="relative min-h-[80vh] md:h-[90vh] flex items-center bg-slate-900 overflow-hidden py-12 md:py-0">
+            {/* --- 3. HERO SECTION (CORRIGÉE) --- */}
+            <header className="relative min-h-[85vh] md:h-[90vh] flex items-center bg-slate-900 overflow-hidden pt-12 pb-24 md:py-0">
                 <div className="absolute inset-0 z-0">
                     <img
                         src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070"
@@ -105,7 +105,9 @@ export default function VisitorView({ projets, onAdminAccess }) {
                     <p className="text-slate-300 text-base md:text-xl max-w-xl mb-10 leading-relaxed reveal">
                         Spécialiste du Génie Civil lourd, Tiger Construction réalise vos infrastructures les plus complexes avec une précision millimétrée.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 reveal">
+
+                    {/* ICI : Ajout de z-30 pour passer devant la section Chiffres */}
+                    <div className="relative z-30 flex flex-col sm:flex-row gap-4 reveal">
                         <a href="#contact" className="bg-amber-500 text-slate-900 px-8 md:px-10 py-4 md:py-5 rounded-full font-black text-center uppercase text-[10px] tracking-widest shadow-xl shadow-amber-500/20 hover:bg-white transition-all">
                             Étude de Projet
                         </a>
@@ -117,7 +119,7 @@ export default function VisitorView({ projets, onAdminAccess }) {
             </header>
 
             {/* --- 4. SECTION CHIFFRES --- */}
-            <section className="relative -mt-10 md:-mt-20 z-20 px-4 md:px-12 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <section className="relative -mt-16 md:-mt-20 z-20 px-4 md:px-12 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {[
                     { n: "30+", t: "Chantiers Livrés" },
                     { n: "10", t: "Ans d'Expertise" },
@@ -131,7 +133,7 @@ export default function VisitorView({ projets, onAdminAccess }) {
                 ))}
             </section>
 
-            {/* --- 5. NOS RÉALISATIONS --- */}
+            {/* ... RESTE DU CODE IDENTIQUE ... */}
             <section id="projets" className="py-20 md:py-32 px-4 md:px-12 max-w-[1400px] mx-auto">
                 <div className="text-center mb-16 md:mb-24 reveal">
                     <h2 className="text-amber-500 font-black tracking-[0.3em] md:tracking-[0.5em] uppercase text-[9px] md:text-xs mb-3 md:mb-4">Portfolio Technique</h2>
@@ -186,7 +188,6 @@ export default function VisitorView({ projets, onAdminAccess }) {
                 </div>
             </section>
 
-            {/* --- 6. CONTACT & DEVIS --- */}
             <section id="contact" className="bg-[#0f172a] py-20 md:py-32 px-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/3 h-full bg-amber-500/5 skew-x-12 translate-x-20"></div>
 
@@ -241,10 +242,9 @@ export default function VisitorView({ projets, onAdminAccess }) {
                 </div>
             </section>
 
-            {/* --- 7. FOOTER --- */}
-            <footer className="py-12 md:py-20 bg-white border-t border-slate-100">
-                <div className="max-w-7xl mx-auto px-6 text-center">
-                    <div className="flex items-center justify-center gap-2 mb-6 md:mb-8">
+            <footer className="py-12 md:py-20 bg-white border-t border-slate-100 text-center">
+                 <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex items-center justify-center gap-2 mb-6">
                         <div className="w-6 h-6 bg-slate-900 rounded flex items-center justify-center">
                             <span className="text-white text-[10px] font-black">T</span>
                         </div>
@@ -253,11 +253,6 @@ export default function VisitorView({ projets, onAdminAccess }) {
                     <p className="text-slate-400 text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] mb-6 md:mb-8">
                         L'EXCELLENCE TECHNIQUE AU SERVICE DU DÉVELOPPEMENT
                     </p>
-                    <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-8 md:mb-12 text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                        <a href="#" className="hover:text-amber-500 transition-colors">Confidentialité</a>
-                        <a href="#" className="hover:text-amber-500 transition-colors">Mentions Légales</a>
-                        <a href="#" className="hover:text-amber-500 transition-colors">Carrières</a>
-                    </div>
                     <p className="text-slate-300 text-[8px] md:text-[9px] font-medium uppercase">
                         © 2026 TIGER CONSTRUCTION GENIE CIVIL.
                     </p>
