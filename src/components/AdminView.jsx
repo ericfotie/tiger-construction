@@ -7,10 +7,11 @@ export default function AdminView({ onLogout }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // États pour la lecture des messages
+    // NOUVEAU : État pour ouvrir la sidebar sur mobile
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     const [selectedMessage, setSelectedMessage] = useState(null);
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-
     const [editingId, setEditingId] = useState(null);
     const [newProjet, setNewProjet] = useState({
         titre: '', description: '', localisation: '',
@@ -30,7 +31,7 @@ export default function AdminView({ onLogout }) {
         }
     };
 
-    useEffect(() => { refreshData(); }, [tab]);
+    useEffect(() => { refreshData(); setIsMobileMenuOpen(false); }, [tab]);
 
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
@@ -48,10 +49,7 @@ export default function AdminView({ onLogout }) {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    setNewProjet(prev => ({
-                        ...prev,
-                        photos: [...prev.photos, optimizedBase64]
-                    }));
+                    setNewProjet(prev => ({ ...prev, photos: [...prev.photos, optimizedBase64] }));
                 };
             };
             reader.readAsDataURL(file);
@@ -79,7 +77,6 @@ export default function AdminView({ onLogout }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isSubmitting) return;
-
         try {
             setIsSubmitting(true);
             const projetData = {
@@ -88,17 +85,14 @@ export default function AdminView({ onLogout }) {
                 typeTravaux: "Génie Civil",
                 evolution: parseInt(newProjet.evolution) || 0
             };
-
             if (editingId) {
                 await ProjetService.update(editingId, projetData);
             } else {
                 await ProjetService.create({ ...projetData, id: Date.now() });
             }
-
             closeModal();
             refreshData();
         } catch (err) {
-            console.error("Erreur d'enregistrement:", err);
             alert("Erreur lors de l'enregistrement.");
         } finally {
             setIsSubmitting(false);
@@ -124,8 +118,21 @@ export default function AdminView({ onLogout }) {
 
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
-            {/* SIDEBAR */}
-            <aside className="w-80 bg-[#0f172a] text-white p-8 flex flex-col fixed h-full shadow-2xl z-20">
+
+            {/* BOUTON MENU BURGER (Mobile uniquement) */}
+            <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden fixed top-6 right-6 z-50 bg-amber-500 text-slate-900 p-4 rounded-2xl shadow-xl font-black"
+            >
+                {isMobileMenuOpen ? '✕' : '☰'}
+            </button>
+
+            {/* SIDEBAR : Responsive (Cachée sur mobile, fixe sur desktop) */}
+            <aside className={`
+                fixed inset-y-0 left-0 z-40 w-80 bg-[#0f172a] text-white p-8 flex flex-col shadow-2xl transition-transform duration-300
+                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                lg:translate-x-0 lg:static lg:h-screen
+            `}>
                 <div className="mb-12">
                     <h2 className="font-black text-2xl uppercase tracking-tighter">Tiger<span className="text-amber-500">.</span>Admin</h2>
                 </div>
@@ -142,11 +149,11 @@ export default function AdminView({ onLogout }) {
                 </button>
             </aside>
 
-            {/* ZONE PRINCIPALE */}
-            <main className="flex-1 ml-80 p-12">
-                <header className="flex justify-between items-end mb-12">
+            {/* ZONE PRINCIPALE : Adaptable */}
+            <main className="flex-1 p-6 lg:p-12 w-full">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
                     <div>
-                        <h1 className="text-5xl font-black uppercase tracking-tighter">
+                        <h1 className="text-3xl lg:text-5xl font-black uppercase tracking-tighter">
                             {tab === 'projets' ? 'Infrastructures' : 'Communications'}
                         </h1>
                         <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-3">
@@ -154,164 +161,115 @@ export default function AdminView({ onLogout }) {
                         </p>
                     </div>
                     {tab === 'projets' && (
-                        <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-amber-500 px-10 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">
+                        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-slate-900 text-amber-500 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">
                             + Nouveau Dossier
                         </button>
                     )}
                 </header>
 
-                {/* LISTE DES ELEMENTS */}
-                <div className="grid grid-cols-1 gap-6">
+                {/* LISTE DES ELEMENTS : Améliorée pour mobile */}
+                <div className="grid grid-cols-1 gap-4">
                     {data.map((item) => (
-                        <div key={item.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 flex items-center justify-between group hover:shadow-md transition-all">
-                            <div className="flex items-center gap-8">
-                                <div className="w-20 h-20 rounded-3xl overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50">
+                        <div key={item.id} className="bg-white p-6 lg:p-8 rounded-[30px] lg:rounded-[40px] shadow-sm border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 group">
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50 flex-shrink-0">
                                     {tab === 'projets' ?
                                         <img src={item.photoUrl || 'https://placehold.co/200'} alt="" className="w-full h-full object-cover" /> :
                                         <span className="text-2xl">📩</span>
                                     }
                                 </div>
                                 <div>
-                                    <h3 className="font-black uppercase text-base text-slate-900">{item.titre || item.sujet || "Sans Titre"}</h3>
-                                    <p className="text-xs text-slate-400 font-bold uppercase mt-1">
+                                    <h3 className="font-black uppercase text-sm lg:text-base text-slate-900 leading-tight">{item.titre || item.sujet || "Sans Titre"}</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
                                         {tab === 'projets' ? `📍 ${item.localisation}` : `👤 ${item.nomExpediteur || 'Inconnu'}`}
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-6">
+                            <div className="flex items-center justify-between w-full sm:w-auto gap-4 lg:gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
                                 {tab === 'projets' ? (
                                     <>
-                                        <div className="text-right">
-                                            <div className="w-32 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div className="text-right hidden xs:block">
+                                            <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                                 <div className="bg-amber-500 h-full" style={{ width: `${item.evolution}%` }}></div>
                                             </div>
                                             <p className="text-[10px] font-black mt-1">{item.evolution}%</p>
                                         </div>
-                                        <button onClick={() => handleEdit(item)} className="w-12 h-12 flex items-center justify-center bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all">
-                                            ✏️
-                                        </button>
+                                        <button onClick={() => handleEdit(item)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-amber-50 text-amber-600 rounded-xl">✏️</button>
                                     </>
                                 ) : (
-                                    <button onClick={() => handleViewMessage(item)} className="w-12 h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-500 hover:text-white transition-all">
-                                        👁️
-                                    </button>
+                                    <button onClick={() => handleViewMessage(item)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl">👁️</button>
                                 )}
-                                <button onClick={() => handleDelete(item.id)} className="w-12 h-12 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
-                                    🗑️
-                                </button>
+                                <button onClick={() => handleDelete(item.id)} className="w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center bg-red-50 text-red-500 rounded-xl">🗑️</button>
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* MODAL PROJET (CREATION OU MODIFICATION) */}
+                {/* MODAL PROJET : Corrigée pour mobile */}
                 {isModalOpen && (
-                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-6 text-slate-900">
-                        <div className="bg-white w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-[50px] p-16 relative">
-                            <h2 className="text-4xl font-black uppercase tracking-tighter mb-10">
+                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4 text-slate-900">
+                        <div className="bg-white w-full max-w-5xl max-h-[95vh] overflow-y-auto rounded-[35px] p-8 lg:p-16 relative">
+                            <h2 className="text-2xl lg:text-4xl font-black uppercase tracking-tighter mb-8">
                                 {editingId ? 'Modifier Dossier' : 'Création Dossier'}
                             </h2>
-                            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div className="space-y-6">
-                                    <input required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold focus:ring-2 ring-amber-500" placeholder="Titre du projet" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
-                                    <input required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold focus:ring-2 ring-amber-500" placeholder="Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
+                            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+                                <div className="space-y-4">
+                                    <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm focus:ring-2 ring-amber-500" placeholder="Titre du projet" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
+                                    <input required className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm focus:ring-2 ring-amber-500" placeholder="Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold" placeholder="Délai" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
-                                        <input type="number" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold" placeholder="Evolution %" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
+                                        <input className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm" placeholder="Délai" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
+                                        <input type="number" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm" placeholder="% Evo" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
                                     </div>
-                                    <textarea className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold h-32 resize-none" placeholder="Description technique" value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
+                                    <textarea className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm h-32 resize-none" placeholder="Description technique" value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
                                 </div>
                                 <div className="space-y-6">
-                                    <div className="border-4 border-dashed border-slate-100 rounded-[40px] p-10 text-center relative bg-slate-50/50">
+                                    <div className="border-4 border-dashed border-slate-100 rounded-3xl p-6 text-center relative bg-slate-50/50">
                                         <input type="file" multiple accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
-                                        <p className="text-[10px] font-black uppercase text-slate-400">Ajouter des photos</p>
+                                        <p className="text-[10px] font-black uppercase text-slate-400 italic">Cliquez pour ajouter des photos</p>
                                     </div>
                                     <div className="grid grid-cols-3 gap-3">
                                         {newProjet.photos.map((img, idx) => (
-                                            <div key={idx} className="aspect-square rounded-2xl overflow-hidden border-2 border-slate-100 relative group">
+                                            <div key={idx} className="aspect-square rounded-xl overflow-hidden relative group">
                                                 <img src={img} alt="" className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setNewProjet(prev => ({...prev, photos: prev.photos.filter((_, i) => i !== idx)}))} className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold text-[10px] uppercase">Supprimer</button>
+                                                <button type="button" onClick={() => setNewProjet(prev => ({...prev, photos: prev.photos.filter((_, i) => i !== idx)}))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center font-bold text-[8px] uppercase">Supprimer</button>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="md:col-span-2 flex gap-4">
-                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-slate-900 text-amber-500 py-6 rounded-[25px] font-black uppercase text-xs tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all disabled:opacity-50">
-                                        {isSubmitting ? 'Enregistrement...' : editingId ? 'Enregistrer les modifications' : 'Valider le dossier'}
+                                <div className="lg:col-span-2 flex flex-col sm:flex-row gap-4">
+                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-slate-900 text-amber-500 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">
+                                        {isSubmitting ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Valider'}
                                     </button>
-                                    <button type="button" onClick={closeModal} className="px-10 py-6 bg-slate-100 text-slate-400 rounded-[25px] font-black uppercase text-xs">Annuler</button>
+                                    <button type="button" onClick={closeModal} className="py-5 px-10 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase text-xs">Annuler</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 )}
 
-                {/* MODAL DE LECTURE DE MESSAGE */}
+                {/* MODAL MESSAGE : Corrigée pour mobile */}
                 {isMessageModalOpen && selectedMessage && (
-                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-6 text-slate-900">
-                        <div className="bg-white w-full max-w-2xl rounded-[40px] p-12 relative shadow-2xl">
-                            <div className="flex justify-between items-start mb-8">
-                                <div>
-                                    <span className="bg-amber-100 text-amber-700 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                        Message Visiteur
-                                    </span>
-                                    <h2 className="text-3xl font-black uppercase tracking-tighter mt-4">
-                                        {selectedMessage.sujet || "Pas d'objet"}
-                                    </h2>
-                                </div>
-                                <button onClick={() => setIsMessageModalOpen(false)} className="text-slate-300 hover:text-slate-900 text-2xl font-bold transition-colors">✕</button>
+                    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4 text-slate-900">
+                        <div className="bg-white w-full max-w-2xl rounded-[35px] p-8 lg:p-12 relative shadow-2xl overflow-y-auto max-h-[90vh]">
+                            <div className="flex justify-between items-start mb-6">
+                                <h2 className="text-2xl font-black uppercase tracking-tighter">{selectedMessage.sujet || "Sans Objet"}</h2>
+                                <button onClick={() => setIsMessageModalOpen(false)} className="text-slate-300 text-2xl font-bold">✕</button>
                             </div>
-
-                            <div className="space-y-5">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Nom</p>
-                                        <p className="font-bold text-slate-800">{selectedMessage.nomExpediteur || "—"}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Email</p>
-                                        <p className="font-bold text-slate-800 break-all">{selectedMessage.email || "—"}</p>
-                                    </div>
+                            <div className="space-y-4">
+                                <div className="bg-slate-50 p-4 rounded-xl">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Coordonnées</p>
+                                    <p className="font-bold text-sm">{selectedMessage.nomExpediteur} • {selectedMessage.email}</p>
                                 </div>
-
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Téléphone</p>
-                                    <p className="font-bold text-slate-800">{selectedMessage.telephone || "Non spécifié"}</p>
+                                <div className="bg-slate-50 p-6 rounded-2xl italic text-sm text-slate-700 leading-relaxed">
+                                    "{selectedMessage.message || selectedMessage.contenu}"
                                 </div>
-
-                                <div className="bg-slate-50 p-6 rounded-3xl min-h-[120px] border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-3">Contenu du message</p>
-                                    <p className="text-slate-700 leading-relaxed italic whitespace-pre-line">
-                                        "{selectedMessage.message || selectedMessage.contenu || "Message vide"}"
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                                <div className="flex flex-col gap-3 pt-4">
                                     {selectedMessage.email && (
-                                        <a
-                                            href={`mailto:${selectedMessage.email}?subject=RE: ${selectedMessage.sujet || 'Votre demande'}`}
-                                            className="bg-amber-500 text-slate-900 flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-lg shadow-amber-500/10"
-                                        >
-                                            ✉️ Répondre par Email
-                                        </a>
+                                        <a href={`mailto:${selectedMessage.email}`} className="bg-amber-500 text-slate-900 text-center py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">✉️ Répondre</a>
                                     )}
-                                    {selectedMessage.telephone && (
-                                        <a
-                                            href={`tel:${selectedMessage.telephone}`}
-                                            className="bg-slate-900 text-white flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-600 transition-all"
-                                        >
-                                            📞 Appeler
-                                        </a>
-                                    )}
+                                    <button onClick={() => setIsMessageModalOpen(false)} className="bg-slate-100 text-slate-400 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Fermer</button>
                                 </div>
                             </div>
-
-                            <button
-                                onClick={() => setIsMessageModalOpen(false)}
-                                className="w-full mt-4 bg-slate-100 text-slate-400 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-50 hover:text-red-500 transition-all"
-                            >
-                                Fermer
-                            </button>
                         </div>
                     </div>
                 )}
