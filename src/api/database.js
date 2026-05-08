@@ -1,6 +1,9 @@
 const STORAGE_KEY = "tiger_storage_v1";
 
-// Données initiales si le LocalStorage est vide
+/**
+ * STRUCTURE DE DONNÉES INITIALE
+ * Sert de base si aucune donnée n'est trouvée
+ */
 const initialData = {
     projets: [
         {
@@ -10,8 +13,9 @@ const initialData = {
             typeTravaux: "Génie Civil",
             description: "Maintenance structurelle et renforcement des piliers.",
             photoUrl: "https://images.unsplash.com/photo-1545139224-79b1219a7ec6?q=80&w=1000",
-            evolution: 45, // Ajouté pour correspondre à ton interface
-            duree: "12 mois"
+            evolution: 45,
+            duree: "12 mois",
+            updatedAt: new Date().toISOString()
         },
         {
             id: 2,
@@ -21,7 +25,8 @@ const initialData = {
             description: "Construction d'infrastructures en béton armé pour la centrale.",
             photoUrl: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=1000",
             evolution: 75,
-            duree: "24 mois"
+            duree: "24 mois",
+            updatedAt: new Date().toISOString()
         }
     ],
     messages: [],
@@ -30,30 +35,46 @@ const initialData = {
     ]
 };
 
+// Fonctions utilitaires internes
 const getData = () => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : initialData;
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : initialData;
+    } catch (e) {
+        console.error("Erreur de lecture Storage", e);
+        return initialData;
+    }
 };
 
 const saveData = (data) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // Déclenche un événement pour mettre à jour les autres onglets du même navigateur
+    window.dispatchEvent(new Event('storage_updated'));
 };
 
+/**
+ * OBJET DATABASE (MÉTHODES CRUD)
+ */
 export const Database = {
-    // GESTION DES PROJETS
-    getProjets: () => getData().projets,
+    // --- GESTION DES PROJETS ---
+    getProjets: () => getData().projets.sort((a, b) => b.id - a.id), // Les plus récents en premier
 
     addProjet: (p) => {
         const d = getData();
-        d.projets.push({ ...p, id: Date.now() });
+        const newProject = {
+            ...p,
+            id: Date.now(),
+            updatedAt: new Date().toISOString()
+        };
+        d.projets.push(newProject);
         saveData(d);
+        return newProject;
     },
 
-    // --- NOUVELLE MÉTHODE DE MISE À JOUR ---
     updateProjet: (id, updatedProject) => {
         const d = getData();
         d.projets = d.projets.map(p =>
-            p.id === id ? { ...updatedProject, id } : p
+            p.id === id ? { ...updatedProject, id, updatedAt: new Date().toISOString() } : p
         );
         saveData(d);
     },
@@ -64,19 +85,33 @@ export const Database = {
         saveData(d);
     },
 
-    // GESTION DES MESSAGES / DEVIS
+    // --- GESTION DES MESSAGES / DEVIS ---
     getMessages: () => getData().messages,
+
     addMessage: (m) => {
         const d = getData();
-        d.messages.push({ ...m, id: Date.now(), date: new Date().toLocaleDateString() });
+        const newMessage = {
+            ...m,
+            id: Date.now(),
+            date: new Date().toLocaleString('fr-FR'),
+            status: 'nouveau'
+        };
+        d.messages.push(newMessage);
         saveData(d);
     },
 
-    // GESTION DES UTILISATEURS
+    deleteMessage: (id) => {
+        const d = getData();
+        d.messages = d.messages.filter(m => m.id !== id);
+        saveData(d);
+    },
+
+    // --- GESTION DES UTILISATEURS ---
     getUsers: () => getData().users,
+
     addUser: (u) => {
         const d = getData();
-        if (!d.users.find(user => user.username === u.username)) {
+        if (!d.users.some(user => user.username === u.username)) {
             d.users.push({ ...u, id: Date.now() });
             saveData(d);
         }

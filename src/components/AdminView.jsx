@@ -13,21 +13,16 @@ export default function AdminView({ onLogout }) {
     const [editingId, setEditingId] = useState(null);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // --- NOUVEAUX ÉTATS POUR LES FILTRES ---
-    const [filterCity, setFilterCity] = useState('Tous');
-    const [filterStatus, setFilterStatus] = useState('Tous');
-
     const [newProjet, setNewProjet] = useState({
         titre: '', description: '', localisation: '',
-        duree: '', evolution: 0, photos: []
+        duree: '', evolution: 0, photos: [], budget: '', client: ''
     });
 
     const refreshData = async () => {
         try {
             const resMessages = await ContactService.getAll();
             const allMessages = Array.isArray(resMessages.data) ? resMessages.data : (Array.isArray(resMessages) ? resMessages : []);
-            const unread = allMessages.filter(m => !m.traite).length;
-            setUnreadCount(unread);
+            setUnreadCount(allMessages.filter(m => !m.traite).length);
 
             if (tab === 'projets') {
                 const res = await ProjetService.getAll();
@@ -36,87 +31,38 @@ export default function AdminView({ onLogout }) {
                 setData(allMessages);
             }
         } catch (err) {
-            console.error("Erreur de synchronisation :", err);
+            console.error("Erreur sync:", err);
             setData([]);
         }
     };
 
     useEffect(() => {
         refreshData();
-        setIsMobileMenuOpen(false);
+        setIsMobileMenuOpen(false); // Ferme le menu mobile lors du changement d'onglet
     }, [tab]);
 
-    // --- LOGIQUE DE FILTRAGE ---
-    const villesUniques = ['Tous', ...new Set(data.map(item => item.localisation).filter(Boolean))];
-
-    const donnéesFiltrées = data.filter(item => {
-        if (tab !== 'projets') return true; // Pas de filtre complexe pour les messages pour l'instant
-        const matchVille = filterCity === 'Tous' || item.localisation === filterCity;
-        const matchStatut = filterStatus === 'Tous'
-            ? true
-            : filterStatus === 'Terminé' ? parseInt(item.evolution) === 100 : parseInt(item.evolution) < 100;
-        return matchVille && matchStatut;
-    });
-
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800;
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    setNewProjet(prev => ({ ...prev, photos: [...prev.photos, optimizedBase64] }));
-                };
-            };
-            reader.readAsDataURL(file);
-        });
+    const handleWhatsApp = (phone, name) => {
+        const cleanPhone = phone.replace(/\s/g, '');
+        const msg = encodeURIComponent(`Bonjour ${name}, nous avons bien reçu votre message concernant notre projet de Génie Civil...`);
+        window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
     };
 
     const handleEdit = (item) => {
         setEditingId(item.id);
-        setNewProjet({
-            titre: item.titre,
-            description: item.description,
-            localisation: item.localisation,
-            duree: item.duree,
-            evolution: item.evolution,
-            photos: item.photos || (item.photoUrl ? [item.photoUrl] : [])
-        });
+        setNewProjet({ ...item, photos: item.photos || [item.photoUrl] });
         setIsModalOpen(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
-            setIsSubmitting(true);
-            const projetData = {
-                ...newProjet,
-                photoUrl: newProjet.photos[0] || "",
-                typeTravaux: "Génie Civil",
-                evolution: parseInt(newProjet.evolution) || 0
-            };
-            if (editingId) {
-                await ProjetService.update(editingId, projetData);
-            } else {
-                await ProjetService.create({ ...projetData, id: Date.now() });
-            }
+            const payload = { ...newProjet, photoUrl: newProjet.photos[0] || "" };
+            editingId ? await ProjetService.update(editingId, payload) : await ProjetService.create(payload);
             closeModal();
             refreshData();
-        } catch (err) {
-            alert("Erreur lors de l'enregistrement.");
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (err) { alert("Erreur technique"); }
+        setIsSubmitting(false);
     };
 
     const closeModal = () => {
@@ -126,207 +72,172 @@ export default function AdminView({ onLogout }) {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Confirmer la suppression ? Cette action est irréversible.")) {
-            try {
-                tab === 'projets' ? await ProjetService.delete(id) : await ContactService.delete(id);
-                refreshData();
-            } catch (err) {
-                console.error("Erreur suppression:", err);
-            }
-        }
+        if (!window.confirm("Supprimer définitivement ?")) return;
+        tab === 'projets' ? await ProjetService.delete(id) : await ContactService.delete(id);
+        refreshData();
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-x-hidden">
+        <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900 relative">
 
-            {/* BOUTON MENU BURGER (Mobile) */}
-            <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden fixed bottom-6 right-6 z-50 bg-amber-500 text-slate-900 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-xl"
-            >
-                {isMobileMenuOpen ? '✕' : '☰'}
-            </button>
+            {/* OVERLAY MOBILE */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
 
             {/* SIDEBAR */}
-            <aside className={`
-                fixed inset-y-0 left-0 z-40 w-72 bg-[#0f172a] text-white p-6 flex flex-col shadow-2xl transition-transform duration-300
-                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-                lg:translate-x-0 lg:static lg:h-screen
-            `}>
-                <div className="mb-10 px-2">
-                    <h2 className="font-black text-xl uppercase tracking-tighter">Tiger<span className="text-amber-500">.</span>Admin</h2>
-                    <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.4em]">Panel de Direction</p>
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-white transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="p-8">
+                    <div className="flex items-center gap-3 mb-10">
+                        <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-black text-slate-900 text-xl">T</div>
+                        <div>
+                            <h2 className="font-black text-lg leading-tight tracking-tighter uppercase">Tiger <span className="text-amber-500">BTP</span></h2>
+                            <p className="text-[9px] text-slate-400 uppercase tracking-widest">Administration</p>
+                        </div>
+                    </div>
+
+                    <nav className="space-y-1">
+                        {[
+                            { id: 'projets', label: 'Projets / Ouvrages', icon: '🏗️' },
+                            { id: 'messages', label: 'Messages Clients', icon: '📩', count: unreadCount },
+                        ].map(item => (
+                            <button key={item.id} onClick={() => setTab(item.id)} className={`w-full flex items-center justify-between p-3.5 rounded-xl text-[11px] font-bold transition-all ${tab === item.id ? 'bg-amber-500 text-slate-900' : 'text-slate-400 hover:bg-white/5'}`}>
+                                <span className="flex items-center gap-3"><span>{item.icon}</span> {item.label}</span>
+                                {item.count > 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{item.count}</span>}
+                            </button>
+                        ))}
+                    </nav>
                 </div>
 
-                <nav className="space-y-2 flex-1">
-                    <button onClick={() => setTab('projets')} className={`w-full flex items-center justify-between p-4 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${tab === 'projets' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
-                        <span>🏗️ Projets</span>
-                    </button>
-
-                    <button onClick={() => setTab('messages')} className={`w-full flex items-center justify-between p-4 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${tab === 'messages' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}>
-                        <span>📩 Messages</span>
-                        {unreadCount > 0 && (
-                            <span className={`px-2 py-0.5 rounded-full text-[8px] ${tab === 'messages' ? 'bg-slate-900 text-white' : 'bg-amber-500 text-slate-900 animate-bounce'}`}>
-                                {unreadCount}
-                            </span>
-                        )}
-                    </button>
-                </nav>
-
-                <button onClick={onLogout} className="mt-auto p-4 border border-white/10 rounded-xl text-[9px] font-black uppercase hover:bg-red-500/10 hover:text-red-500 transition-all text-slate-500">
-                    Déconnexion
-                </button>
+                <div className="absolute bottom-0 w-full p-6 border-t border-white/5">
+                    <button onClick={onLogout} className="w-full p-3 rounded-xl border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500 hover:text-white transition-all">Déconnexion</button>
+                </div>
             </aside>
 
-            {/* ZONE PRINCIPALE */}
-            <main className="flex-1 p-4 lg:p-10 w-full max-w-7xl mx-auto">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            {/* MAIN CONTENT */}
+            <main className="flex-1 lg:ml-64 p-4 md:p-8 lg:p-12 w-full overflow-x-hidden">
+
+                {/* MOBILE HEADER BAR */}
+                <div className="lg:hidden flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <button onClick={() => setIsMobileMenuOpen(true)} className="text-2xl">☰</button>
+                    <span className="font-black text-sm uppercase tracking-tighter">Tiger Dashboard</span>
+                    <div className="w-8 h-8 bg-amber-500 rounded-md flex items-center justify-center font-bold">T</div>
+                </div>
+
+                {/* TOP HEADER */}
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-12">
                     <div>
-                        <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tighter">
-                            {tab === 'projets' ? 'Infrastructures' : 'Boîte de réception'}
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter">
+                            {tab === 'projets' ? 'Gestion des Travaux' : 'Messages Clients'}
                         </h1>
+                        <p className="text-slate-400 text-[12px] md:text-sm mt-1 font-medium">Contrôle et suivi en temps réel.</p>
                     </div>
                     {tab === 'projets' && (
-                        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-slate-900 text-amber-500 px-6 py-3.5 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all shadow-lg shadow-amber-500/10">
-                            + Ajouter un projet
+                        <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-[#0F172A] text-amber-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg">
+                            + Nouveau Chantier
                         </button>
                     )}
                 </header>
 
-                {/* --- BARRE DE FILTRES (Affichée uniquement pour l'onglet Projets) --- */}
-                {tab === 'projets' && data.length > 0 && (
-                    <div className="flex flex-wrap gap-4 mb-8 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="flex-1 min-w-[150px]">
-                            <label className="text-[8px] font-black uppercase text-slate-400 ml-2">📍 Localisation</label>
-                            <select
-                                value={filterCity}
-                                onChange={(e) => setFilterCity(e.target.value)}
-                                className="w-full mt-1 p-3 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none focus:ring-2 ring-amber-500"
-                            >
-                                {villesUniques.map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex-1 min-w-[150px]">
-                            <label className="text-[8px] font-black uppercase text-slate-400 ml-2">📊 État d'avancement</label>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="w-full mt-1 p-3 bg-slate-50 border-none rounded-xl text-[10px] font-bold outline-none focus:ring-2 ring-amber-500"
-                            >
-                                <option value="Tous">Tous les chantiers</option>
-                                <option value="En cours">En cours de réalisation</option>
-                                <option value="Terminé">Chantiers achevés</option>
-                            </select>
-                        </div>
+                {/* KPI CARDS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Chantiers</p>
+                        <p className="text-2xl font-black text-slate-900">{tab === 'projets' ? data.length : '-'}</p>
                     </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-3">
-                    {donnéesFiltrées.length > 0 ? donnéesFiltrées.map((item) => (
-                        <div key={item.id} className="bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100">
-                                    {tab === 'projets' ?
-                                        <img src={item.photoUrl || 'https://placehold.co/200'} className="w-full h-full object-cover" alt="" /> :
-                                        <div className="w-full h-full flex items-center justify-center text-xl bg-amber-50">✉️</div>
-                                    }
-                                </div>
-                                <div className="truncate">
-                                    <h3 className="font-black uppercase text-xs lg:text-sm text-slate-900 truncate">{item.titre || item.sujet || "Sans objet"}</h3>
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5 truncate">
-                                        {tab === 'projets' ? `📍 ${item.localisation}` : `👤 ${item.nomExpediteur || 'Client'}`}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {tab === 'projets' ? (
-                                    <>
-                                        <div className="hidden sm:block text-right mr-4">
-                                            <p className="text-[8px] font-black text-slate-400 uppercase">Evo</p>
-                                            <p className="text-[10px] font-black text-amber-500">{item.evolution}%</p>
-                                        </div>
-                                        <button onClick={() => handleEdit(item)} className="p-2.5 bg-slate-50 text-slate-400 hover:bg-amber-100 hover:text-amber-600 rounded-lg transition-colors">✏️</button>
-                                    </>
-                                ) : (
-                                    <button onClick={() => { setSelectedMessage(item); setIsMessageModalOpen(true); }} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg">👁️</button>
-                                )}
-                                <button onClick={() => handleDelete(item.id)} className="p-2.5 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all">🗑️</button>
-                            </div>
-                        </div>
-                    )) : (
-                        <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Aucun dossier correspondant</p>
-                        </div>
-                    )}
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Status Moyen</p>
+                        <p className="text-2xl font-black text-amber-500">74%</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Messages</p>
+                        <p className="text-2xl font-black text-blue-600">{unreadCount}</p>
+                    </div>
                 </div>
 
-                {/* MODAL PROJET (Inchangée mais toujours nécessaire) */}
+                {/* LISTING SECTION */}
+                <div className="space-y-3">
+                    {data.length === 0 && <div className="text-center py-20 text-slate-400 text-sm italic font-medium">Aucune donnée disponible.</div>}
+                    {data.map((item) => (
+                        <div key={item.id} className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-4">
+
+                            {/* Visual Indicator */}
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                {tab === 'projets' ?
+                                    <img src={item.photoUrl || 'https://placehold.co/100x100'} className="w-full h-full object-cover" /> :
+                                    <span className="text-xl">📩</span>
+                                }
+                            </div>
+
+                            {/* Details */}
+                            <div className="flex-1 text-center md:text-left min-w-0">
+                                <h3 className="font-black text-slate-900 uppercase text-xs md:text-sm truncate">
+                                    {item.titre || item.nomExpediteur}
+                                </h3>
+                                <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-1">
+                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded uppercase">📍 {item.localisation || "Yaoundé"}</span>
+                                    {tab === 'projets' && <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase">⏳ {item.duree}</span>}
+                                </div>
+                            </div>
+
+                            {/* Progress bar on mobile/desktop */}
+                            {tab === 'projets' && (
+                                <div className="w-full md:w-32">
+                                    <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-amber-500" style={{width: `${item.evolution}%`}}></div>
+                                    </div>
+                                    <p className="text-[8px] font-black text-right mt-1 text-slate-500">{item.evolution}%</p>
+                                </div>
+                            )}
+
+                            {/* Actions Group */}
+                            <div className="flex gap-2 w-full md:w-auto justify-center">
+                                {tab === 'projets' ? (
+                                    <>
+                                        <button onClick={() => handleEdit(item)} className="flex-1 md:flex-none p-3 bg-slate-900 text-white rounded-xl text-xs">✏️</button>
+                                        <button onClick={() => handleDelete(item.id)} className="flex-1 md:flex-none p-3 bg-red-50 text-red-500 rounded-xl text-xs">🗑️</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button onClick={() => handleWhatsApp(item.telephone, item.nomExpediteur)} className="flex-1 md:flex-none px-4 py-2 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">WhatsApp</button>
+                                        <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-50 text-red-500 rounded-xl text-xs">🗑️</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* MODAL PROJET - RESPONSIVE MODAL */}
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeModal}></div>
-                        <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 lg:p-10 relative z-10 shadow-2xl">
-                            <h2 className="text-xl font-black uppercase mb-6">{editingId ? 'Modifier' : 'Nouveau'} Projet</h2>
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+                        <div className="bg-white w-full max-w-2xl rounded-[30px] p-6 md:p-10 shadow-2xl relative my-auto">
+                            <h2 className="text-xl font-black uppercase tracking-tighter mb-6 text-slate-900">Configurateur Chantier</h2>
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input required className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs focus:ring-2 ring-amber-500" placeholder="Nom de l'ouvrage" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
-                                    <input required className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs focus:ring-2 ring-amber-500" placeholder="Ville / Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
-                                    <input className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs" placeholder="Durée (ex: 12 mois)" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
-                                    <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase">Evo: {newProjet.evolution}%</span>
-                                        <input type="range" className="flex-1 accent-amber-500" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
+                                    <div className="space-y-3">
+                                        <input required className="w-full p-4 bg-slate-50 border-none rounded-xl text-xs font-bold" placeholder="Nom de l'ouvrage" value={newProjet.titre} onChange={e => setNewProjet({...newProjet, titre: e.target.value})} />
+                                        <input required className="w-full p-4 bg-slate-50 border-none rounded-xl text-xs font-bold" placeholder="Localisation" value={newProjet.localisation} onChange={e => setNewProjet({...newProjet, localisation: e.target.value})} />
+                                        <input className="w-full p-4 bg-slate-50 border-none rounded-xl text-xs font-bold" placeholder="Durée (ex: 12 mois)" value={newProjet.duree} onChange={e => setNewProjet({...newProjet, duree: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <textarea className="w-full p-4 bg-slate-50 border-none rounded-xl text-xs font-bold h-[104px] resize-none" placeholder="Description technique..." value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
+                                        <div className="p-3 bg-slate-50 rounded-xl">
+                                            <label className="block text-[8px] font-black uppercase text-slate-400 mb-2">Avancement : {newProjet.evolution}%</label>
+                                            <input type="range" className="w-full accent-amber-500" value={newProjet.evolution} onChange={e => setNewProjet({...newProjet, evolution: e.target.value})} />
+                                        </div>
                                     </div>
                                 </div>
-                                <textarea className="w-full p-4 bg-slate-50 rounded-xl outline-none font-bold text-xs h-24 resize-none" placeholder="Description technique..." value={newProjet.description} onChange={e => setNewProjet({...newProjet, description: e.target.value})} />
-
-                                <div className="border-2 border-dashed border-slate-100 rounded-2xl p-6 text-center bg-slate-50/50">
-                                    <input type="file" multiple accept="image/*" className="hidden" id="fileInput" onChange={handleFileChange} />
-                                    <label htmlFor="fileInput" className="cursor-pointer text-[9px] font-black uppercase text-amber-600 hover:text-amber-700 transition-colors">
-                                        + Ajouter des photos techniques
-                                    </label>
-                                    <div className="grid grid-cols-4 gap-2 mt-4">
-                                        {newProjet.photos.map((img, idx) => (
-                                            <div key={idx} className="aspect-square rounded-lg overflow-hidden relative group">
-                                                <img src={img} alt="" className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setNewProjet(prev => ({...prev, photos: prev.photos.filter((_, i) => i !== idx)}))} className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] font-bold uppercase transition-all">Supprimer</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-50">
-                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-slate-900 text-amber-500 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all shadow-lg">
-                                        {isSubmitting ? 'Enregistrement...' : 'Valider le dossier'}
+                                <div className="flex gap-3 pt-4 border-t border-slate-100">
+                                    <button type="submit" disabled={isSubmitting} className="flex-1 bg-amber-500 text-slate-900 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/20">
+                                        {isSubmitting ? "Enregistrement..." : "Confirmer"}
                                     </button>
-                                    <button type="button" onClick={closeModal} className="px-8 py-4 bg-slate-100 text-slate-400 rounded-xl font-black uppercase text-[10px]">Annuler</button>
+                                    <button type="button" onClick={closeModal} className="flex-1 bg-slate-100 text-slate-500 py-4 rounded-xl font-black uppercase text-[10px]">Annuler</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* MODAL MESSAGE */}
-                {isMessageModalOpen && selectedMessage && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMessageModalOpen(false)}></div>
-                        <div className="bg-white w-full max-w-lg rounded-3xl p-6 lg:p-10 relative z-10 shadow-2xl">
-                            <div className="mb-6">
-                                <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Nouveau Message</span>
-                                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 mt-1">{selectedMessage.sujet}</h2>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Expéditeur</p>
-                                    <p className="font-bold text-xs text-slate-700">{selectedMessage.nomExpediteur} ({selectedMessage.email})</p>
-                                </div>
-                                <div className="bg-amber-50/30 p-5 rounded-2xl text-xs text-slate-600 leading-relaxed font-medium">
-                                    {selectedMessage.message || selectedMessage.contenu}
-                                </div>
-                                <div className="flex flex-col gap-2 pt-4">
-                                    <a href={`mailto:${selectedMessage.email}`} className="bg-slate-900 text-amber-500 text-center py-4 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">✉️ Répondre au client</a>
-                                    <button onClick={() => setIsMessageModalOpen(false)} className="py-4 text-slate-400 font-black uppercase text-[9px]">Fermer</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}

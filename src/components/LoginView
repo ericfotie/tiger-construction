@@ -3,82 +3,129 @@ import React, { useState } from 'react';
 export default function LoginView({ onLogin, onBack }) {
     const [creds, setCreds] = useState({ user: '', pass: '' });
     const [error, setError] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Vérification des identifiants (à remplacer par ton AuthService plus tard)
-        if (creds.user === 'admin' && creds.pass === '123') {
-            onLogin();
-        } else {
-            setError(true);
-            setTimeout(() => setError(false), 2000);
-        }
+        setIsLoading(true);
+        setError(false);
+
+        // Simulation d'une latence réseau pour le réalisme (800ms)
+        setTimeout(() => {
+            if (creds.user === 'admin' && creds.pass === '123') {
+                // Succès : On déclenche la fonction du parent (App.js)
+                onLogin();
+            } else {
+                // Échec
+                setError(true);
+                setIsLoading(false);
+                // Vibration visuelle ou reset après 3s
+                setTimeout(() => setError(false), 3000);
+            }
+        }, 800);
     };
 
     return (
-        <div className="h-screen w-full bg-tiger-dark flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md rounded-[40px] p-10 md:p-12 shadow-2xl relative overflow-hidden">
-                {/* Ligne décorative Tiger Gold */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-tiger-gold"></div>
+        <div className="min-h-screen w-full bg-[#0F172A] flex items-center justify-center p-4 md:p-6 relative overflow-hidden">
 
-                {/* Logo & En-tête */}
-                <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-tiger-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-tiger-gold/20">
-                        <span className="text-white text-3xl font-black">T</span>
-                    </div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-tiger-dark">
-                        Espace <span className="text-tiger-gold">Direction</span>
-                    </h2>
-                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2">
-                        Tiger Construction BTP
-                    </p>
-                </div>
+            {/* Background Decor */}
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-amber-500/5 rounded-full blur-[120px]"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/5 rounded-full blur-[120px]"></div>
 
-                {/* Formulaire de connexion */}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 ml-3">Identifiant</label>
-                        <input
-                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
-                            placeholder="admin"
-                            value={creds.user}
-                            onChange={e => setCreds({...creds, user: e.target.value})}
-                        />
-                    </div>
+            <div className="w-full max-w-lg relative">
+                {/* Glow Effect */}
+                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-amber-700/20 rounded-[45px] blur-xl transition duration-1000"></div>
 
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 ml-3">Mot de passe</label>
-                        <input
-                            type="password"
-                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
-                            placeholder="••••••••"
-                            value={creds.pass}
-                            onChange={e => setCreds({...creds, pass: e.target.value})}
-                        />
-                    </div>
+                <div className="relative bg-white rounded-[40px] shadow-2xl overflow-hidden p-6 md:p-12 lg:p-16">
 
-                    {error && (
-                        <div className="bg-red-50 py-2 rounded-xl">
-                            <p className="text-red-500 text-[10px] font-black uppercase text-center animate-pulse">
-                                Accès refusé : Identifiants incorrects
+                    {/* Brand Header */}
+                    <div className="flex flex-col items-center mb-10">
+                        <div className="relative mb-6">
+                            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-2xl transform hover:rotate-3 transition-transform">
+                                <span className="text-amber-500 text-3xl font-black italic">T</span>
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg border-2 border-white">
+                                <span className="text-slate-900 text-[8px] font-black underline">BTP</span>
+                            </div>
+                        </div>
+
+                        <div className="text-center">
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-slate-900 leading-none">
+                                Espace <span className="text-amber-500">Décisionnel</span>
+                            </h1>
+                            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.4em] mt-3">
+                                Tiger Construction Group
                             </p>
                         </div>
-                    )}
+                    </div>
 
-                    <button className="w-full py-5 bg-tiger-dark text-tiger-gold font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-black transition-all shadow-xl shadow-tiger-gold/10">
-                        Ouvrir le Bureau
-                    </button>
-                </form>
+                    {/* Login Form */}
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Identifiant</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:opacity-100 transition-opacity">👤</span>
+                                <input
+                                    required
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 font-bold transition-all"
+                                    placeholder="Utilisateur admin"
+                                    value={creds.user}
+                                    onChange={e => setCreds({...creds, user: e.target.value})}
+                                />
+                            </div>
+                        </div>
 
-                {/* Bouton Retour (Bas de page) */}
-                <div className="mt-10 pt-6 border-t border-slate-50 flex justify-center">
-                    <button
-                        onClick={onBack}
-                        className="text-slate-400 hover:text-tiger-dark flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all group"
-                    >
-                        <span className="group-hover:-translate-x-1 transition-transform">←</span>
-                        Retour au site public
-                    </button>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Clé d'accès</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:opacity-100 transition-opacity">🔒</span>
+                                <input
+                                    required
+                                    type="password"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 font-bold transition-all"
+                                    placeholder="••••••••"
+                                    value={creds.pass}
+                                    onChange={e => setCreds({...creds, pass: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="flex items-center gap-3 bg-red-50 p-4 rounded-2xl border border-red-100 animate-bounce">
+                                <p className="text-red-600 text-[10px] font-black uppercase leading-tight w-full text-center">
+                                    Identifiants invalides
+                                </p>
+                            </div>
+                        )}
+
+                        <button
+                            disabled={isLoading}
+                            className={`w-full py-5 bg-[#0F172A] text-amber-500 font-black uppercase tracking-[0.2em] text-[11px] rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-black hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-3 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                            {isLoading ? (
+                                <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                "Ouvrir la session"
+                            )}
+                        </button>
+                    </form>
+
+                    {/* Back Link */}
+                    <div className="mt-10 flex flex-col items-center gap-6">
+                        <button
+                            onClick={onBack}
+                            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors group"
+                        >
+                            <span className="text-xs group-hover:-translate-x-1 transition-transform">←</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Retour au site public</span>
+                        </button>
+
+                        <div className="flex items-center gap-4 opacity-10">
+                            <div className="h-[1px] w-8 bg-slate-900"></div>
+                            <p className="text-[7px] font-black uppercase text-slate-900">Tiger BTP Security</p>
+                            <div className="h-[1px] w-8 bg-slate-900"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

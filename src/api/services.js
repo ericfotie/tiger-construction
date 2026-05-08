@@ -2,20 +2,31 @@ import api from './api.js';
 
 /**
  * SERVICE D'AUTHENTIFICATION
- * Gère la connexion et la session locale (LocalStorage)
+ * Gère la validation des accès et la persistance de session
  */
 export const AuthService = {
     login: async (username, password) => {
-        const response = await api.get('/users');
-        const users = response.data || [];
+        try {
+            const response = await api.get('/users');
+            const users = response.data || [];
 
-        const user = users.find(u => u.username === username && u.password === password);
+            // Recherche de l'utilisateur correspondant
+            const user = users.find(u => u.username === username && u.password === password);
 
-        if (user) {
-            localStorage.setItem('tiger_session', JSON.stringify({ loggedIn: true, user: username }));
-            return { success: true, user };
+            if (user) {
+                // Stockage de la session pour persistance après rafraîchissement
+                localStorage.setItem('tiger_session', JSON.stringify({
+                    loggedIn: true,
+                    user: username,
+                    role: 'admin'
+                }));
+                return { success: true, user };
+            }
+            return { success: false, message: "Identifiants invalides" };
+        } catch (error) {
+            console.error("Erreur Auth:", error);
+            return { success: false, message: "Erreur serveur" };
         }
-        return { success: false, message: "Identifiants invalides" };
     },
 
     logout: () => {
@@ -24,30 +35,51 @@ export const AuthService = {
 
     checkSession: () => {
         const session = localStorage.getItem('tiger_session');
-        return session ? JSON.parse(session) : null;
+        try {
+            return session ? JSON.parse(session) : null;
+        } catch {
+            return null; // Sécurité si le JSON est corrompu
+        }
     }
 };
 
 /**
  * SERVICE DES PROJETS (CHANTIERS)
+ * Centralise les opérations CRUD pour les réalisations de Tiger BTP
  */
 export const ProjetService = {
     getAll: () => api.get('/projets'),
-    create: (data) => api.post('/projets', data),
 
-    // --- NOUVELLE MÉTHODE DE MISE À JOUR ---
-    update: (id, updatedData) => api.put(`/projets/${id}`, updatedData),
+    getById: (id) => api.get(`/projets/${id}`),
+
+    create: (data) => api.post('/projets', {
+        ...data,
+        createdAt: new Date().toISOString() // Horodatage automatique
+    }),
+
+    // Mise à jour effective pour refléter les changements sur tous les terminaux
+    update: (id, updatedData) => api.put(`/projets/${id}`, {
+        ...updatedData,
+        updatedAt: new Date().toISOString()
+    }),
 
     delete: (id) => api.delete(`/projets/${id}`)
 };
 
 /**
  * SERVICE DE CONTACT ET DEVIS
+ * Gère la réception des formulaires clients
  */
 export const ContactService = {
-    send: (data) => api.post('/contact', data),
     getAll: () => api.get('/contact'),
-    // Ajout du delete si tu l'utilises dans AdminView
+
+    send: (data) => api.post('/contact', {
+        ...data,
+        date: new Date().toISOString(),
+        lu: false // Flag pour marquer les messages non lus dans l'admin
+    }),
+
+    // Pour nettoyer la boîte de réception dans AdminView
     delete: (id) => api.delete(`/contact/${id}`)
 };
 
@@ -56,5 +88,10 @@ export const ContactService = {
  */
 export const UserService = {
     getAll: () => api.get('/users'),
-    create: (data) => api.post('/users', data)
+
+    create: (data) => api.post('/users', data),
+
+    update: (id, data) => api.put(`/users/${id}`, data),
+
+    delete: (id) => api.delete(`/users/${id}`)
 };

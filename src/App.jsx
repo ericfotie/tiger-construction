@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjetService, ContactService, UserService, AuthService } from './api/services';
 import VisitorView from './components/VisitorView';
 import AdminView from './components/AdminView';
 
-// --- COMPOSANT LOGIN (Optimisé avec ton style Tiger) ---
+// --- COMPOSANT LOGIN (Optimisé) ---
 function LoginView({ onLogin }) {
     const [creds, setCreds] = useState({ user: '', pass: '' });
     const [error, setError] = useState(false);
@@ -13,68 +13,59 @@ function LoginView({ onLogin }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const result = await AuthService.login(creds.user, creds.pass);
-
-        if (result.success) {
-            onLogin();
-        } else {
+        try {
+            const result = await AuthService.login(creds.user, creds.pass);
+            if (result.success) {
+                onLogin();
+            } else {
+                setError(true);
+                setTimeout(() => setError(false), 3000);
+            }
+        } catch (err) {
             setError(true);
-            setTimeout(() => setError(false), 2000);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
-        <div className="h-screen w-full bg-tiger-dark flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-md rounded-[40px] p-10 md:p-12 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-tiger-gold"></div>
-
-                <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-tiger-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-tiger-gold/20">
-                        <span className="text-white text-3xl font-black">T</span>
+        <div className="min-h-screen w-full bg-[#0F172A] flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl border-t-8 border-amber-500">
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-amber-500 text-3xl font-black italic">T</span>
                     </div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-tiger-dark">Direction <span className="text-tiger-gold">Tiger</span></h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-2">Accès Sécurisé Bureau</p>
+                    <h2 className="text-2xl font-black uppercase text-slate-900">Portail Direction</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Tiger Construction Group</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Identifiant</label>
-                        <input
-                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
-                            placeholder="Utilisateur"
-                            value={creds.user}
-                            onChange={e => setCreds({...creds, user: e.target.value})}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Mot de passe</label>
-                        <input
-                            type="password"
-                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-tiger-gold font-bold transition-all"
-                            placeholder="••••••••"
-                            value={creds.pass}
-                            onChange={e => setCreds({...creds, pass: e.target.value})}
-                        />
-                    </div>
-
-                    {error && (
-                        <p className="text-red-500 text-[10px] font-black uppercase text-center animate-pulse py-2">
-                            Identifiants invalides
-                        </p>
-                    )}
-
+                    <input
+                        required
+                        className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-amber-500 font-bold"
+                        placeholder="Identifiant"
+                        value={creds.user}
+                        onChange={e => setCreds({...creds, user: e.target.value})}
+                    />
+                    <input
+                        required
+                        type="password"
+                        className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-amber-500 font-bold"
+                        placeholder="Mot de passe"
+                        value={creds.pass}
+                        onChange={e => setCreds({...creds, pass: e.target.value})}
+                    />
+                    {error && <p className="text-red-500 text-[10px] font-black uppercase text-center">Échec d'authentification</p>}
                     <button
                         disabled={loading}
-                        className="w-full py-5 bg-tiger-dark text-tiger-gold font-black uppercase tracking-[0.2em] rounded-2xl mt-4 hover:bg-black transition-all shadow-xl disabled:opacity-50"
+                        className="w-full py-5 bg-slate-900 text-amber-500 font-black uppercase rounded-2xl hover:bg-black transition-all disabled:opacity-50"
                     >
-                        {loading ? "Vérification..." : "Entrer dans le Bureau"}
+                        {loading ? "Connexion..." : "Accéder au Bureau"}
                     </button>
                 </form>
-
-                <a href="/" className="block text-center mt-8 text-[9px] font-black text-slate-400 uppercase hover:text-tiger-dark transition-colors">
+                <button onClick={() => window.location.href='/'} className="w-full text-center mt-6 text-[9px] font-black text-slate-400 uppercase hover:text-slate-900">
                     ← Retour au site public
-                </a>
+                </button>
             </div>
         </div>
     );
@@ -86,22 +77,8 @@ export default function App() {
     const [data, setData] = useState({ projets: [], messages: [], users: [] });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        initApp();
-    }, []);
-
-    const initApp = async () => {
-        setLoading(true);
-        // Vérifier la session
-        const session = AuthService.checkSession();
-        if (session && session.loggedIn) {
-            setIsAdmin(true);
-        }
-        await loadAllData();
-        setLoading(false);
-    };
-
-    const loadAllData = async () => {
+    // loadAllData est mémorisé pour éviter les boucles infinies dans useEffect
+    const loadAllData = useCallback(async () => {
         try {
             const [respP, respM, respU] = await Promise.all([
                 ProjetService.getAll(),
@@ -109,31 +86,34 @@ export default function App() {
                 UserService.getAll()
             ]);
 
-            let p = respP?.data || [];
-            // Auto-seed si vide
-            if (p.length === 0) {
-                await seedInitialData();
-                const retryP = await ProjetService.getAll();
-                p = retryP?.data || [];
-            }
-
             setData({
-                projets: p,
+                projets: respP?.data || [],
                 messages: respM?.data || [],
                 users: respU?.data || []
             });
         } catch (err) {
-            console.error("❌ Erreur de chargement :", err);
+            console.error("❌ Erreur de synchronisation :", err);
         }
-    };
+    }, []);
 
-    const seedInitialData = async () => {
-        const demo = [
-            { titre: "Extension Portuaire Douala", localisation: "Littoral", typeTravaux: "Génie Maritime", description: "Aménagement des quais.", evolution: 65, duree: "24 mois", photoUrl: "https://images.unsplash.com/photo-1590644365607-1c5a519a7a37?q=80&w=2070" },
-            { titre: "Pont sur la Sanaga", localisation: "Nachtigal", typeTravaux: "Ouvrage d'art", description: "Pont mixte acier-béton.", evolution: 40, duree: "18 mois", photoUrl: "https://images.unsplash.com/photo-1545139224-79b1219a7ec6?q=80&w=2070" }
-        ];
-        for (const proj of demo) { await ProjetService.create(proj); }
-    };
+    useEffect(() => {
+        const initApp = async () => {
+            // 1. Vérification de session (si tu utilises un cookie ou localStorage simple)
+            const session = AuthService.checkSession();
+            if (session?.loggedIn) setIsAdmin(true);
+
+            // 2. Chargement initial
+            await loadAllData();
+            setLoading(false);
+
+            // 3. Mise en place du temps réel (Polling court ou WebSocket si Supabase)
+            // Pour Vercel + DB en ligne, on rafraîchit toutes les 30s pour les users
+            const interval = setInterval(loadAllData, 30000);
+            return () => clearInterval(interval);
+        };
+
+        initApp();
+    }, [loadAllData]);
 
     const handleLogout = () => {
         AuthService.logout();
@@ -141,31 +121,23 @@ export default function App() {
     };
 
     if (loading) return (
-        <div className="h-screen w-full flex items-center justify-center bg-tiger-dark">
-            <div className="text-center">
-                <div className="w-12 h-12 border-4 border-tiger-gold border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                <h2 className="text-white font-black uppercase tracking-[0.3em] text-[10px]">Tiger Construction</h2>
-            </div>
+        <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
+            <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
 
     return (
         <Router>
             <Routes>
-                {/* ROUTE CLIENT (Par défaut) */}
-                <Route path="/" element={
-                    <VisitorView
-                        projets={data.projets}
-                        onAdminAccess={() => {}} // Optionnel si tu as enlevé le bouton du haut
-                    />
-                } />
+                {/* PUBLIC : Accessible par tous (téléphones & PC) */}
+                <Route path="/" element={<VisitorView projets={data.projets} />} />
 
-                {/* DEUXIÈME LIEN : Ton accès secret /direction */}
+                {/* LOGIN SECRET */}
                 <Route path="/direction" element={
                     isAdmin ? <Navigate to="/admin" /> : <LoginView onLogin={() => setIsAdmin(true)} />
                 } />
 
-                {/* ROUTE ADMIN (Protégée par le state isAdmin) */}
+                {/* ADMIN : Uniquement si connecté */}
                 <Route path="/admin" element={
                     isAdmin ? (
                         <AdminView
@@ -179,7 +151,6 @@ export default function App() {
                     )
                 } />
 
-                {/* Redirection automatique si lien inconnu */}
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </Router>
