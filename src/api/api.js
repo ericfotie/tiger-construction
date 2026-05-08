@@ -1,38 +1,56 @@
-import { Database } from './database.js';
+import { supabase } from './supabase/supabaseClient';
 
 const api = {
-    // Lecture des données
+    // Lecture des données (GET)
     get: async (url) => {
-        console.log(`[GET] ${url}`);
-        if (url.includes('/projets')) return { data: Database.getProjets() };
-        if (url.includes('/contact') || url.includes('/devis')) return { data: Database.getMessages() };
-        if (url.includes('/users')) return { data: Database.getUsers() };
+        console.log(`[GET] ${url} depuis Supabase`);
+
+        if (url.includes('/projets')) {
+            const { data, error } = await supabase
+                .from('projets')
+                .select('*')
+                .order('id', { ascending: false });
+            if (error) throw error;
+            return { data };
+        }
+
+        // Pour les messages de contact/devis
+        if (url.includes('/contact') || url.includes('/devis')) {
+            const { data, error } = await supabase.from('messages').select('*');
+            if (error) throw error;
+            return { data };
+        }
+
         return { data: [] };
     },
 
     // Création (POST)
     post: async (url, body) => {
         console.log(`[POST] ${url}`, body);
-        await new Promise(res => setTimeout(res, 800)); // Délai pro
-
-        if (url.includes('/projets')) Database.addProjet(body);
-        if (url.includes('/contact') || url.includes('/devis')) Database.addMessage(body);
-        if (url.includes('/users')) Database.addUser(body);
-
-        return { data: { success: true, message: "Enregistré avec succès" } };
-    },
-
-    // --- CORRECTION : La méthode PUT pour la modification ---
-    put: async (url, body) => {
-        console.log(`[PUT] ${url}`, body);
-        await new Promise(res => setTimeout(res, 800));
-
-        // On récupère l'ID à la fin de l'URL
-        const id = parseInt(url.split('/').pop());
 
         if (url.includes('/projets')) {
-            // Utilise la méthode que nous avons ajoutée dans Database.js
-            Database.updateProjet(id, body);
+            const { error } = await supabase.from('projets').insert([body]);
+            if (error) throw error;
+        }
+
+        if (url.includes('/contact') || url.includes('/devis')) {
+            const { error } = await supabase.from('messages').insert([{ ...body, status: 'nouveau' }]);
+            if (error) throw error;
+        }
+
+        return { data: { success: true, message: "Enregistré sur Supabase" } };
+    },
+
+    // Modification (PUT)
+    put: async (url, body) => {
+        const id = url.split('/').pop(); // Récupère l'ID
+
+        if (url.includes('/projets')) {
+            const { error } = await supabase
+                .from('projets')
+                .update(body)
+                .eq('id', id);
+            if (error) throw error;
         }
 
         return { data: { success: true } };
@@ -40,13 +58,15 @@ const api = {
 
     // Suppression (DELETE)
     delete: async (url) => {
-        console.log(`[DELETE] ${url}`);
-        const id = parseInt(url.split('/').pop());
+        const id = url.split('/').pop();
 
         if (url.includes('/projets')) {
-            Database.deleteProjet(id);
+            const { error } = await supabase
+                .from('projets')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
         }
-        // Tu peux ajouter Database.deleteMessage(id) ici si tu l'as créée
 
         return { data: { success: true } };
     }

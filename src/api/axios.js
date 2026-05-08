@@ -1,47 +1,75 @@
-import axios from 'axios';
+import { supabase } from './supabase/supabaseClient';
 
-// Nous créons une instance "fictive" pour ne pas casser tes imports actuels
 const api = {
-    // Simulation d'une requête GET (ex: projets)
+    /**
+     * LECTURE : Récupère les données en direct du Cloud
+     */
     get: async (url) => {
-        console.log(`[API Simulée] GET: ${url}`);
-        const data = JSON.parse(localStorage.getItem('tiger_storage')) || { projets: [], devis: [] };
+        console.log(`[Supabase] GET: ${url}`);
 
-        // Retourne une structure identique à Axios
-        return { data: url.includes('projets') ? data.projets : data };
+        if (url.includes('projets')) {
+            const { data, error } = await supabase
+                .from('projets')
+                .select('*')
+                .order('id', { ascending: false });
+
+            if (error) throw error;
+            return { data: data || [] };
+        }
+
+        if (url.includes('devis') || url.includes('contact')) {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return { data: data || [] };
+        }
+
+        return { data: [] };
     },
 
-    // Simulation d'une requête POST (ex: envoyer un devis ou ajouter un projet)
+    /**
+     * CRÉATION : Envoie un nouveau projet ou message sur le serveur
+     */
     post: async (url, body) => {
-        console.log(`[API Simulée] POST: ${url}`, body);
+        console.log(`[Supabase] POST: ${url}`, body);
 
-        let storage = JSON.parse(localStorage.getItem('tiger_storage')) || { projets: [], devis: [] };
+        if (url.includes('projets')) {
+            const { data, error } = await supabase
+                .from('projets')
+                .insert([body]);
 
-        if (url.includes('contact') || url.includes('devis')) {
-            storage.devis.push({ ...body, id: Date.now(), date: new Date().toLocaleDateString() });
+            if (error) throw error;
         }
-        else if (url.includes('projets')) {
-            storage.projets.push({ ...body, id: Date.now() });
+        else if (url.includes('contact') || url.includes('devis')) {
+            const { error } = await supabase
+                .from('messages')
+                .insert([{ ...body, status: 'nouveau' }]);
+
+            if (error) throw error;
         }
-
-        localStorage.setItem('tiger_storage', JSON.stringify(storage));
-
-        // Simule un délai réseau pour le professionnalisme (chargement)
-        await new Promise(resolve => setTimeout(resolve, 800));
 
         return { data: { message: "Succès", status: 200 } };
     },
 
-    // Simulation d'une requête DELETE
+    /**
+     * SUPPRESSION : Efface définitivement une donnée
+     */
     delete: async (url) => {
-        const id = parseInt(url.split('/').pop());
-        let storage = JSON.parse(localStorage.getItem('tiger_storage'));
+        const id = url.split('/').pop();
+        console.log(`[Supabase] DELETE ID: ${id}`);
 
         if (url.includes('projets')) {
-            storage.projets = storage.projets.filter(p => p.id !== id);
+            const { error } = await supabase
+                .from('projets')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
         }
 
-        localStorage.setItem('tiger_storage', JSON.stringify(storage));
         return { data: { success: true } };
     }
 };
